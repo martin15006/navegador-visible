@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "navegador-visible",
+  "owner": {
+    "name": "Juan Sebastián Martín Moncada",
+    "url": "https://github.com/martin15006"
+  },
+  "metadata": {
+    "description": "Automatización de navegador VISIBLE: ventana real, narración paso a paso y confirmación con botones. Envuelve a agent-browser."
+  },
+  "plugins": [
+    {
+      "name": "navegador-visible",
+      "source": "./",
+      "description": "Hace que la automatización del navegador sea transparente: abre una ventana de Chrome real (--headed), narra cada paso en español, verifica que funcionó, y pide confirmación con botones antes de acciones irreversibles. Cero imágenes al chat.",
+      "version": "1.0.0",
+      "license": "MIT",
+      "skills": ["./skills/navegador-visible"],
+      "category": "development",
+      "keywords": ["browser-automation", "agent-browser", "headed", "visible", "skill"]
+    }
+  ]
+}

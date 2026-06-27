@@ -1,0 +1,14 @@
+{
+  "name": "navegador-visible",
+  "version": "1.0.0",
+  "description": "Hace que la automatización del navegador sea transparente: abre una ventana de Chrome real (--headed), narra cada paso en español, verifica que funcionó, y pide confirmación con botones antes de acciones irreversibles. Envuelve a agent-browser.",
+  "author": {
+    "name": "Juan Sebastián Martín Moncada",
+    "url": "https://github.com/martin15006"
+  },
+  "homepage": "https://github.com/martin15006/navegador-visible",
+  "repository": "https://github.com/martin15006/navegador-visible",
+  "license": "MIT",
+  "skills": "./skills",
+  "keywords": ["browser-automation", "agent-browser", "headed", "visible", "skill"]
+}
