@@ -13,7 +13,7 @@
       "name": "navegador-visible",
       "source": "./",
       "description": "Hace que la automatización del navegador sea transparente: abre una ventana de Chrome real (--headed), narra cada paso en español, verifica que funcionó, y pide confirmación con botones antes de acciones irreversibles. Cero imágenes al chat.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "license": "MIT",
       "skills": ["./skills/navegador-visible"],
       "category": "development",
