@@ -9,7 +9,8 @@ description: >-
   web". Reemplaza al panel Browser integrado (mcp__Claude_Browser), a Claude Preview y al MCP de
   Playwright para todo lo que tenga pantalla, porque esos corren donde el usuario no mira. Una vez
   abierta la ventana, toda la tarea de UI sigue en ella hasta el final. Pide confirmación con
-  botones antes de lo irreversible.
+  botones antes de lo irreversible. También cuando agent-browser se cuelga, no vuelve o responde
+  "daemon may be busy or unresponsive".
 license: MIT
 ---
 
@@ -24,6 +25,10 @@ license: MIT
 4. No cierres la ventana a mitad de tarea. Si se cerró, reabrí **con** `--headed`.
 5. Scripts contra la API: solo de complemento, avisando *"esto no se ve en la ventana"*.
 6. Una línea de narración antes de cada paso; botones de confirmación antes de lo irreversible.
+7. **Nunca pases la salida de `agent-browser` por un tubo** (`| tail`, `| head`, `| grep`, `$(…)`,
+   `$x = …` en PowerShell). Que salga directa o a un archivo, y filtrá el archivo.
+8. ¿Se colgó o dice `daemon may be busy or unresponsive`? No reintentes `open`, no cambies de
+   `--session` y no cierres la ventana: seguí [Si se cuelga o da error](#si-se-cuelga-o-da-error).
 
 ## Por qué existe
 
@@ -47,8 +52,9 @@ agent-browser --headed open http://localhost:3000
 - agent-browser abre el navegador **oculto** por defecto. `--headed` es lo que hace aparecer la ventana.
 - Mientras la ventana siga abierta, los comandos siguientes la reutilizan aunque no lleven
   `--headed` (verificado).
-- Si la cerraste, se cayó o reiniciaste agent-browser, el próximo `open` sin `--headed` arranca un
-  navegador **invisible**. Siempre reabrí con `--headed`.
+- Si la cerraste, se cayó, reiniciaste agent-browser o pasó **1 hora sin comandos** (se cierra
+  sola), el próximo `open` sin `--headed` arranca un navegador **invisible**. Siempre reabrí con
+  `--headed`.
 - Avisale que se abrió. Si no la ve, seguramente quedó detrás de la app de Claude (Alt+Tab).
 
 ## Regla 2: una sola ventana para toda la tarea
@@ -67,7 +73,7 @@ No cambies a `mcp__plugin_playwright_playwright__*`, `mcp__Claude_Browser__*` ni
 | `browser_snapshot`, `read_page` | `agent-browser snapshot -i` |
 | `browser_evaluate`, `javascript_tool` | `agent-browser eval "<js>"` |
 | `browser_take_screenshot` | `agent-browser screenshot archivo.png` (a disco, no al chat) |
-| `browser_resize`, `resize_window` | `agent-browser set viewport <ancho> <alto>` (ej. 390 844 para móvil) |
+| `browser_resize`, `resize_window` | `agent-browser set viewport <ancho> <alto>` (ej. 390 844 para móvil). Con la ventana maximizada da error aunque funcione: ver [Si se cuelga o da error](#si-se-cuelga-o-da-error) |
 
 - No uses un `--session` distinto al de la ventana: otra sesión es otro navegador, invisible.
 - Los scripts de node o curl contra la API **sí** sirven para lo que la ventana no puede mostrar
@@ -127,6 +133,44 @@ Navegar, leer, escribir en un campo sin enviar o reproducir un video no necesita
   controla la automatización y Google suele bloquear ese login. Pedile al usuario que inicie sesión
   él en la ventana, o que use su navegador normal.
 
+## Si se cuelga o da error
+
+agent-browser tiene dos bugs en Windows que siguen sin arreglo (comprobados en la 0.38.1):
+
+| Qué pasa | Por qué | Qué hacer |
+|---|---|---|
+| Un comando no vuelve (Bash lo pasa a segundo plano), pero la ventana sí se abrió | Su salida iba por un tubo y ese comando arrancó la sesión: agent-browser deja el tubo abierto hasta que la ventana se cierra | La ventana anda. Comprobalo con `agent-browser get url` (sin tubo) y seguí desde ahí, sin tubos. No reabras. Dejá el comando colgado en segundo plano: termina solo cuando cerrás la ventana al final. |
+| `set viewport` responde `EOF while parsing … daemon may be busy or unresponsive` | La ventana está maximizada | Comprobá el tamaño con `agent-browser eval "innerWidth+'x'+innerHeight"`. Casi siempre se aplicó igual y seguís. Si no, pedile a Martín que la desmaximice, repetí `set viewport` **una** vez y comprobá de nuevo. Si sigue sin aplicarse, frená y contale. |
+
+Cualquier comando puede arrancar la sesión: el primero, el que sigue a un cierre o el que llega
+después de 1 hora sin uso. Por eso la regla es **ningún tubo, nunca**, no "solo en el primero".
+Para que un comando no espere de más, usá el timeout de la herramienta Bash.
+
+**Para filtrar una salida larga**, mandala a un archivo fuera del proyecto y filtrá el archivo:
+
+```bash
+agent-browser snapshot -i > "$TEMP/snap.txt" 2>&1
+grep -n "Crear vehículo" "$TEMP/snap.txt"
+
+# y para guardar un valor en una variable, en vez de $(…):
+agent-browser get text ".contador" > "$TEMP/valor.txt" 2>&1
+read -r valor < "$TEMP/valor.txt"
+```
+
+`timeout 60 agent-browser … | tail` **no** protege: `timeout` corta agent-browser, pero `tail`
+sigue esperando.
+
+**Si ni `agent-browser get url` responde** (recién ahí se cierra la ventana):
+
+1. No reintentes `open` en bucle ni pruebes otra `--session`: cada intento deja un proceso y una
+   ventana más. Con muchos, Windows se queda sin recursos y hasta bash falla
+   (`fork: Resource temporarily unavailable`).
+2. `agent-browser session list` para ver qué quedó abierto.
+3. Avisale a Martín que vas a cerrar la ventana, corré `agent-browser close --all` y reabrí
+   **una sola vez** con `--headed`, en la última URL que viste. Antes de repetir la acción que
+   falló, mirá si llegó a hacerse (un click puede haber pasado aunque dio error).
+4. Si sigue fallando, frená y contale a Martín el error tal cual.
+
 ## Capturas
 
 Por defecto, ninguna al chat: el usuario ya ve la ventana y las imágenes solo alargan la
@@ -137,7 +181,7 @@ Para un registro completo está el video (ver Opcionales).
 
 ```
 1. agent-browser --headed open <url>     → aparece la ventana (avisale)
-2. agent-browser snapshot -i             → leés la página como texto; cookies si hay
+2. agent-browser snapshot -i             → leés la página como texto (sin tubos); cookies si hay
 3. narración de una línea
 4. agent-browser click / fill / press    → la acción pasa en la ventana
 5. comprobás el resultado (wait / eval)
@@ -161,8 +205,12 @@ agent-browser wait --load networkidle # esperar a que cargue
 agent-browser wait --text "Listo"     # esperar un texto
 agent-browser eval "<js>"             # comprobar estado
 agent-browser screenshot paso.png     # captura a disco (no al chat)
-agent-browser close                   # cerrar al final
+agent-browser session list            # qué sesiones hay abiertas
+agent-browser close                   # cerrar al final (close --all si quedaron varias)
 ```
+
+Ninguno va con `| tail`, `| head`, `| grep` ni `$(…)`: salida directa, o a un archivo y después
+filtrás el archivo.
 
 ## Opcionales (a pedido)
 
