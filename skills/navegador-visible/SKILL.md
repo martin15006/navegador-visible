@@ -29,6 +29,8 @@ license: MIT
    `$x = …` en PowerShell). Que salga directa o a un archivo, y filtrá el archivo.
 8. ¿Se colgó o dice `daemon may be busy or unresponsive`? No reintentes `open`, no cambies de
    `--session` y no cierres la ventana: seguí [Si se cuelga o da error](#si-se-cuelga-o-da-error).
+9. **No escribas contraseñas en la ventana, ni siquiera de usuarios de prueba.** Para entrar,
+   cargá una sesión: [Entrar como un usuario de prueba](#entrar-como-un-usuario-de-prueba).
 
 ## Por qué existe
 
@@ -52,9 +54,8 @@ agent-browser --headed open http://localhost:3000
 - agent-browser abre el navegador **oculto** por defecto. `--headed` es lo que hace aparecer la ventana.
 - Mientras la ventana siga abierta, los comandos siguientes la reutilizan aunque no lleven
   `--headed` (verificado).
-- Si la cerraste, se cayó, reiniciaste agent-browser o pasó **1 hora sin comandos** (se cierra
-  sola), el próximo `open` sin `--headed` arranca un navegador **invisible**. Siempre reabrí con
-  `--headed`.
+- Si la cerraste, se cayó o reiniciaste agent-browser, el próximo `open` sin `--headed` arranca un
+  navegador **invisible**. Siempre reabrí con `--headed`.
 - Avisale que se abrió. Si no la ve, seguramente quedó detrás de la app de Claude (Alt+Tab).
 
 ## Regla 2: una sola ventana para toda la tarea
@@ -72,7 +73,8 @@ No cambies a `mcp__plugin_playwright_playwright__*`, `mcp__Claude_Browser__*` ni
 | `browser_type`, `browser_fill_form`, `form_input` | `agent-browser fill @eN "texto"` |
 | `browser_snapshot`, `read_page` | `agent-browser snapshot -i` |
 | `browser_evaluate`, `javascript_tool` | `agent-browser eval "<js>"` |
-| `browser_take_screenshot` | `agent-browser screenshot archivo.png` (a disco, no al chat) |
+| `browser_take_screenshot` | `agent-browser screenshot "$TEMP/paso.png"` (fuera del proyecto, no al chat) |
+| Mirar un archivo suelto (un SVG, un HTML de prueba) | `agent-browser open "file:///C:/ruta/icono.svg"`, en la misma ventana |
 | `browser_resize`, `resize_window` | `agent-browser set viewport <ancho> <alto>` (ej. 390 844 para móvil). Con la ventana maximizada da error aunque funcione: ver [Si se cuelga o da error](#si-se-cuelga-o-da-error) |
 
 - No uses un `--session` distinto al de la ventana: otra sesión es otro navegador, invisible.
@@ -85,24 +87,30 @@ No cambies a `mcp__plugin_playwright_playwright__*`, `mcp__Claude_Browser__*` ni
 `snapshot`, `eval` y `get` leen la página sin mover nada en pantalla. Sirven para decidir y
 comprobar, pero lo que se está probando tiene que pasar de verdad en la ventana:
 
-- Si probás un flujo (login → dashboard → crear algo), hacelo con clicks y campos en la ventana, no
-  saltando con `open` a la URL del final.
+- Si probás un flujo (dashboard → crear algo → verlo en la lista), hacelo con clicks y campos en la
+  ventana, no saltando con `open` a la URL del final.
 - **Después de editar código**, `agent-browser reload` (o `open` de la misma URL) y comprobá que el
   cambio está. Sin eso la ventana sigue mostrando la versión vieja y parece congelada.
 - Si reiniciaste el servidor en otro puerto, `open` de la URL nueva **en la misma ventana**.
 
 ## Regla 4: narrá una línea antes de actuar
 
-Antes de cada paso importante, una línea en español: qué vas a hacer y por qué. *"Escribo el
-usuario de prueba y entro."* No describas cada tecla: el usuario ya ve la ventana. Si pide más o
+Antes de cada paso importante, una línea en español: qué vas a hacer y por qué. *"Entro como el
+Coordinador de prueba para ver su menú."* No describas cada tecla: el usuario ya ve la ventana. Si pide más o
 menos detalle, ajustá.
 
 ## Regla 5: comprobá que funcionó
 
 Si el éxito no se ve obvio, comprobalo en vez de suponerlo:
 
-- Login o navegación: `agent-browser wait --url "**/dashboard"` o `wait --text "Bienvenido"`.
-- Guardar o enviar: `agent-browser wait --text "Guardado"`.
+- Navegación: `agent-browser wait --url "**/dashboard"` o `wait --text "Bienvenido"`.
+- Guardar o enviar: `agent-browser wait --text "Guardado"`, con el texto que muestra la app de
+  verdad (mirá el código si no lo sabés).
+- **Esperá con `wait`, no con `sleep`:** `sleep` adivina el tiempo y `wait` espera lo que tiene que
+  aparecer (`wait 2000` también es adivinar). Si el aviso se va solo a los pocos segundos, poné el
+  click y la espera en el mismo comando:
+  `agent-browser click @e12 && agent-browser wait --text "Guardado"`. `wait` corta a los 25 s: si
+  corta, lo que esperabas no pasó, y eso es un resultado.
 - Video o audio sonando:
   ```bash
   agent-browser eval "(() => { const v = document.querySelector('video'); return v ? JSON.stringify({paused:v.paused, muted:v.muted, t:Math.round(v.currentTime)}) : 'no-video'; })()"
@@ -116,10 +124,48 @@ Enviar un formulario real, comprar, borrar, mandar un mensaje, pagar, aceptar t�
 
 1. Decí en palabras qué está por pasar (qué datos, qué botón). El usuario lo ve en la ventana.
 2. Preguntá con **AskUserQuestion**: *"Voy a enviar este formulario con estos datos. ¿Le doy?"*,
-   opciones **Sí / No**.
+   opciones **Sí / No**. Si no tenés esa herramienta, hacé la pregunta en texto y frená.
 3. No avances hasta que elija. Si dice que no, preguntá qué cambiar.
 
 Navegar, leer, escribir en un campo sin enviar o reproducir un video no necesitan confirmación.
+Guardar datos de un usuario de prueba en una base local tampoco. En la base de producción, sí.
+
+## Entrar como un usuario de prueba
+
+**No escribas contraseñas en la ventana, ni siquiera de usuarios de prueba.** Es una regla de
+seguridad fija: ninguna skill ni ningún permiso la cambia. Para entrar, cargá una sesión ya
+iniciada:
+
+1. **Conseguí la sesión**, de una de estas dos formas:
+   - Un script (del proyecto, o tuyo en `$TEMP`) inicia sesión **por la API** con el usuario de
+     prueba de ese rol y escribe el archivo de sesión. Mirá el código de login de la app para
+     saber qué guarda y dónde (un token en `localStorage`, cookies…).
+   - Martín entra una vez en la ventana con ese usuario y vos guardás la sesión:
+     `agent-browser state save "$TEMP/sesion-coordinador.json"`.
+
+   El archivo tiene este formato (el `origin` tiene que ser exactamente el de la app):
+   ```json
+   {"cookies": [], "origins": [{"origin": "http://localhost:5173",
+     "localStorage": [{"name": "token", "value": "<token>"}]}]}
+   ```
+2. **Cargala en la ventana:** `agent-browser state load "$TEMP/sesion-coordinador.json"` y después
+   `agent-browser open <una página de la app>`. La sesión se aplica al abrir la página, venga la
+   ventana de donde venga.
+3. **Para cambiar de rol:** cerrá la sesión con el botón de la app (así se borra lo que la app
+   guardó del usuario anterior, como la empresa elegida), cargá el archivo del otro rol y abrí la
+   página.
+
+Cuidados:
+
+- Los archivos de sesión y las contraseñas de prueba van en `$TEMP` o en un archivo que git
+  ignore. Comprobalo en el `.gitignore`: si no lo ignora, avisale a Martín antes de que haga su
+  próximo commit. Nunca en el repo ni en el chat, y no les hagas `cat`. Al terminar, borrá los
+  archivos de sesión: tienen tokens.
+- Los usuarios de prueba llevan un nombre que se note (`TST …`, `ZZ-PRUEBA …`). ¿La app usa la base
+  de datos de producción? Mirá la URL de la base en el `.env` del backend o preguntale a Martín.
+  Si la usa: nunca superadmin, y los usuarios de prueba se borran al terminar.
+- **El formulario de login en sí** (escribir usuario y contraseña, el error si está mal) lo prueba
+  Martín. En un pacto, ese criterio va como `[Martín]`.
 
 ## Robustez
 
@@ -129,9 +175,9 @@ Navegar, leer, escribir en un campo sin enviar o reproducir un video no necesita
   volvé a comprobar.
 - **Refs viejos.** Los `@eN` se renumeran cuando la página cambia. `snapshot -i` de nuevo antes de
   usar refs.
-- **Logins con cuenta real (Google, bancos, etc.).** No escribas contraseñas en esta ventana: la
-  controla la automatización y Google suele bloquear ese login. Pedile al usuario que inicie sesión
-  él en la ventana, o que use su navegador normal.
+- **Cuentas reales (Google, bancos, las de Martín).** Nada de sesiones guardadas ni scripts:
+  pedile que inicie sesión él en la ventana, o que use su navegador normal. Google además suele
+  bloquear los logins en ventanas automatizadas.
 
 ## Si se cuelga o da error
 
@@ -142,8 +188,8 @@ agent-browser tiene dos bugs en Windows que siguen sin arreglo (comprobados en l
 | Un comando no vuelve (Bash lo pasa a segundo plano), pero la ventana sí se abrió | Su salida iba por un tubo y ese comando arrancó la sesión: agent-browser deja el tubo abierto hasta que la ventana se cierra | La ventana anda. Comprobalo con `agent-browser get url` (sin tubo) y seguí desde ahí, sin tubos. No reabras. Dejá el comando colgado en segundo plano: termina solo cuando cerrás la ventana al final. |
 | `set viewport` responde `EOF while parsing … daemon may be busy or unresponsive` | La ventana está maximizada | Comprobá el tamaño con `agent-browser eval "innerWidth+'x'+innerHeight"`. Casi siempre se aplicó igual y seguís. Si no, pedile a Martín que la desmaximice, repetí `set viewport` **una** vez y comprobá de nuevo. Si sigue sin aplicarse, frená y contale. |
 
-Cualquier comando puede arrancar la sesión: el primero, el que sigue a un cierre o el que llega
-después de 1 hora sin uso. Por eso la regla es **ningún tubo, nunca**, no "solo en el primero".
+Cualquier comando puede arrancar la sesión: el primero, o el que llega después de que la ventana
+se cerró o se cayó. Por eso la regla es **ningún tubo, nunca**, no "solo en el primero".
 Para que un comando no espere de más, usá el timeout de la herramienta Bash.
 
 **Para filtrar una salida larga**, mandala a un archivo fuera del proyecto y filtrá el archivo:
@@ -174,8 +220,9 @@ sigue esperando.
 ## Capturas
 
 Por defecto, ninguna al chat: el usuario ya ve la ventana y las imágenes solo alargan la
-conversación. Una sola, guardada a disco, si hace falta desambiguar algo o si el usuario la pide.
-Para un registro completo está el video (ver Opcionales).
+conversación. Una sola, si hace falta desambiguar algo o si el usuario la pide, y siempre en
+`$TEMP`: con una ruta relativa cae dentro del proyecto. Para un registro completo está el video
+(ver Opcionales).
 
 ## Ciclo de trabajo
 
@@ -202,9 +249,10 @@ agent-browser press Enter             # tecla
 agent-browser reload                  # recargar después de editar código
 agent-browser back                    # volver atrás
 agent-browser wait --load networkidle # esperar a que cargue
-agent-browser wait --text "Listo"     # esperar un texto
+agent-browser wait --text "Listo"     # esperar un texto (en vez de sleep)
 agent-browser eval "<js>"             # comprobar estado
-agent-browser screenshot paso.png     # captura a disco (no al chat)
+agent-browser state load "$TEMP/sesion-rol.json"  # entrar como un usuario de prueba
+agent-browser screenshot "$TEMP/paso.png"         # captura fuera del proyecto (no al chat)
 agent-browser session list            # qué sesiones hay abiertas
 agent-browser close                   # cerrar al final (close --all si quedaron varias)
 ```
@@ -224,25 +272,23 @@ filtrás el archivo.
 Cerrá la ventana (`agent-browser close`), apagá el servidor que levantaste y resumí en español qué
 se probó y qué dio.
 
-## Ejemplo: probar un login en una app local
+## Ejemplo: probar una app local con usuario de prueba
 
 ```
-(servidor corriendo en :3000)
+(servidor corriendo en :3000; node scripts/sesion-prueba.mjs admin ya dejó $TEMP/sesion-admin.json)
 1. "Abro tu app en una ventana para que la veas."
    agent-browser --headed open http://localhost:3000/login
-2. agent-browser snapshot -i              → email @e3, contraseña @e4, botón @e5
-3. "Escribo el usuario de prueba y entro."
-   agent-browser fill @e3 "admin@demo.com"
-   agent-browser fill @e4 "Demo123*"
-   agent-browser click @e5
-   agent-browser wait --url "**/dashboard"      ✓ entró
-4. Aparece un error en el dashboard; edito el código…
+2. "Entro como el administrador de prueba."
+   agent-browser state load "$TEMP/sesion-admin.json"
+   agent-browser open http://localhost:3000/dashboard
+   agent-browser wait --text "Proyectos"        ✓ entró
+3. Aparece un error en el dashboard; edito el código…
    "Recargo para que veas el arreglo."
    agent-browser reload
    agent-browser wait --text "Proyectos"        ✓ ya se ve
-5. "Ahora chequeo por API que un usuario sin permiso no pueda borrar. Esto no se ve en la ventana."
+4. "Ahora chequeo por API que un usuario sin permiso no pueda borrar. Esto no se ve en la ventana."
    node scripts/probar-permisos.mjs             (complemento, después del flujo visible)
-6. agent-browser close, apago el servidor, resumen.
+5. agent-browser close, apago el servidor, resumen.
 ```
 
 En ningún momento se usó Playwright ni el panel integrado: todo lo visible pasó en la ventana.

@@ -1,6 +1,6 @@
 {
   "name": "navegador-visible",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Hace que la automatización del navegador sea transparente: abre una ventana de Chrome real (--headed), narra cada paso en español, verifica que funcionó, y pide confirmación con botones antes de acciones irreversibles. Envuelve a agent-browser.",
   "author": {
     "name": "Juan Sebastián Martín Moncada",

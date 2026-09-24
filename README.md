@@ -14,6 +14,7 @@ Envuelve a [`agent-browser`](https://github.com/vercel-labs/agent-browser) (el C
 | 🗣️ **Narra paso a paso** | Antes de cada acción importante, dice en una línea qué va a hacer. |
 | ✅ **Verifica** | Después de acciones cuyo éxito no es obvio (reproducir, loguear, guardar), comprueba que de verdad funcionó (`eval`/`wait`), no lo asume. |
 | 🛑 **Confirma lo irreversible** | Antes de enviar formularios, comprar, borrar o mandar mensajes, pide confirmación con botones **Sí / No** y no avanza hasta que elijas. |
+| 🔑 **Nunca escribe contraseñas** | Para entrar como un usuario de prueba carga una sesión ya iniciada (`state load`), y para cambiar de rol carga otra. El formulario de login lo probás vos. |
 
 Por defecto **no manda imágenes al chat** (vos ves la ventana; la IA navega leyendo la página como texto). Opcionalmente puede grabar un **video** de la sesión o usar el **dashboard** de agent-browser.
 
