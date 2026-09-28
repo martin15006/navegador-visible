@@ -175,16 +175,27 @@ Cuidados:
   volvé a comprobar.
 - **Refs viejos.** Los `@eN` se renumeran cuando la página cambia. `snapshot -i` de nuevo antes de
   usar refs.
+- **`wait --text` busca el texto como se ve**, no como está en el HTML. Si el CSS lo pone en
+  mayúsculas (`text-transform`), esperá `"ELIMINAR LA EMPRESA"`, no `"Eliminar la empresa"`.
+- **Campos de fecha (`<input type="date">`).** `fill` y `keyboard type` no escriben nada, y `click`
+  abre el calendario, que se queda con las teclas. Lo que funciona: `agent-browser focus "#fecha"` y
+  después un `press` por dígito, en el orden que muestra el campo (en Colombia, día/mes/año:
+  `press 2`, `press 3`, `press 0`, `press 9`…). Comprobalo con `eval` del `value`.
+- **Git Bash cambia los argumentos que empiezan con `/`.** `/admin/usuarios` llega como
+  `C:/Program Files/Git/admin/usuarios`, y lo mismo le pasa a un `eval` o un `wait --fn` que
+  empieza con una regex `/…/`. Usá la URL completa y empezá los comandos con
+  `export MSYS_NO_PATHCONV=1`.
 - **Cuentas reales (Google, bancos, las de Martín).** Nada de sesiones guardadas ni scripts:
   pedile que inicie sesión él en la ventana, o que use su navegador normal. Google además suele
   bloquear los logins en ventanas automatizadas.
 
 ## Si se cuelga o da error
 
-agent-browser tiene dos bugs en Windows que siguen sin arreglo (comprobados en la 0.38.1):
+agent-browser tiene tres bugs que siguen sin arreglo (comprobados en la 0.38.1):
 
 | Qué pasa | Por qué | Qué hacer |
 |---|---|---|
+| A mitad de la prueba la página queda en `about:blank` y se perdió la sesión. A veces la salida dice `[agent-browser] launched browser` | Antes de cada comando, agent-browser le da a Chrome **3 segundos** para contestar. Si la PC está cargada (poca RAM libre, un build o tests pesados corriendo) y tarda más, lo da por muerto y abre otro Chrome en blanco. **No es culpa del último comando**: le pasa a cualquiera, `wait` incluido | Volvé a abrir la página y a cargar la sesión, **una** vez, y avisale a Martín que la ventana se reinició. Si vuelve a pasar, bajá la carga: no corras builds, tests pesados ni instalaciones mientras usás la ventana, y apagá servidores y ventanas que no uses. |
 | Un comando no vuelve (Bash lo pasa a segundo plano), pero la ventana sí se abrió | Su salida iba por un tubo y ese comando arrancó la sesión: agent-browser deja el tubo abierto hasta que la ventana se cierra | La ventana anda. Comprobalo con `agent-browser get url` (sin tubo) y seguí desde ahí, sin tubos. No reabras. Dejá el comando colgado en segundo plano: termina solo cuando cerrás la ventana al final. |
 | `set viewport` responde `EOF while parsing … daemon may be busy or unresponsive` | La ventana está maximizada | Comprobá el tamaño con `agent-browser eval "innerWidth+'x'+innerHeight"`. Casi siempre se aplicó igual y seguís. Si no, pedile a Martín que la desmaximice, repetí `set viewport` **una** vez y comprobá de nuevo. Si sigue sin aplicarse, frená y contale. |
 
