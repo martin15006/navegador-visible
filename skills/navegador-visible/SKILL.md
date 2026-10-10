@@ -191,11 +191,12 @@ Cuidados:
 
 ## Si se cuelga o da error
 
-agent-browser tiene tres bugs que siguen sin arreglo (comprobados en la 0.38.1):
+agent-browser tiene tres problemas que siguen en la 0.39.0 (`agent-browser --version`; si tenés
+una más vieja, actualizá):
 
 | Qué pasa | Por qué | Qué hacer |
 |---|---|---|
-| A mitad de la prueba la página queda en `about:blank` y se perdió la sesión. A veces la salida dice `[agent-browser] launched browser` | Antes de cada comando, agent-browser le da a Chrome **3 segundos** para contestar. Si la PC está cargada (poca RAM libre, un build o tests pesados corriendo) y tarda más, lo da por muerto y abre otro Chrome en blanco. **No es culpa del último comando**: le pasa a cualquiera, `wait` incluido | Volvé a abrir la página y a cargar la sesión, **una** vez, y avisale a Martín que la ventana se reinició. Si vuelve a pasar, bajá la carga: no corras builds, tests pesados ni instalaciones mientras usás la ventana, y apagá servidores y ventanas que no uses. |
+| A mitad de la prueba la página queda en `about:blank` y se perdió la sesión. A veces la salida dice `[agent-browser] launched browser` | Antes de cada comando, agent-browser le da a Chrome **3 segundos** para contestar. Si la PC está cargada (poca RAM libre, un build o tests pesados corriendo) y tarda más, lo da por muerto y abre otro Chrome en blanco. Hasta la 0.38.1 también pasaba cuando Chrome se trababa con su propio log lleno, en sesiones largas; eso se arregló en la 0.38.2. **No es culpa del último comando**: le pasa a cualquiera, `wait` incluido | Volvé a abrir la página y a cargar la sesión, **una** vez, y avisale a Martín que la ventana se reinició. Si vuelve a pasar, bajá la carga: no corras builds, tests pesados ni instalaciones mientras usás la ventana, y apagá servidores y ventanas que no uses. |
 | Un comando no vuelve (Bash lo pasa a segundo plano), pero la ventana sí se abrió | Su salida iba por un tubo y ese comando arrancó la sesión: agent-browser deja el tubo abierto hasta que la ventana se cierra | La ventana anda. Comprobalo con `agent-browser get url` (sin tubo) y seguí desde ahí, sin tubos. No reabras. Dejá el comando colgado en segundo plano: termina solo cuando cerrás la ventana al final. |
 | `set viewport` responde `EOF while parsing … daemon may be busy or unresponsive` | La ventana está maximizada | Comprobá el tamaño con `agent-browser eval "innerWidth+'x'+innerHeight"`. Casi siempre se aplicó igual y seguís. Si no, pedile a Martín que la desmaximice, repetí `set viewport` **una** vez y comprobá de nuevo. Si sigue sin aplicarse, frená y contale. |
 

@@ -28,7 +28,7 @@ npm i -g agent-browser
 
 - Node.js y npm.
 - Google Chrome instalado (agent-browser usa tu Chrome del sistema).
-- Probada con agent-browser **0.38.1**. Si tenés una versión vieja: `npm i -g agent-browser@latest`.
+- Probada con agent-browser **0.39.0**. Si tenés una versión vieja: `npm i -g agent-browser@latest`.
 
 ### ⚠️ Windows: dos bugs de agent-browser que la skill esquiva
 
