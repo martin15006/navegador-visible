@@ -28,13 +28,14 @@ npm i -g agent-browser
 
 - Node.js y npm.
 - Google Chrome instalado (agent-browser usa tu Chrome del sistema).
-- Probada con agent-browser **0.39.0**. Si tenés una versión vieja: `npm i -g agent-browser@latest`.
+- Probada con agent-browser **0.39.3**. Si tenés una versión vieja: `npm i -g agent-browser@latest`.
 
-### ⚠️ Windows: dos bugs de agent-browser que la skill esquiva
+### ⚠️ Problemas de agent-browser que la skill esquiva
 
-| Bug | Qué hace la skill |
+| Problema | Qué hace la skill |
 |---|---|
-| Si la salida del primer comando pasa por un tubo (`\| tail`, `$(…)`), el comando no vuelve hasta que se cierra la ventana ([vercel-labs/agent-browser#1407](https://github.com/vercel-labs/agent-browser/issues/1407)) | Nunca usa tubos con agent-browser: salida directa o a un archivo |
+| Hasta la 0.39.2, en Windows, pasar la salida del primer comando por un tubo (`\| tail`, `$(…)`) lo dejaba colgado ([#1407](https://github.com/vercel-labs/agent-browser/issues/1407), arreglado en la 0.39.3) | Pide la 0.39.3 o más nueva |
+| Si la PC está cargada y Chrome tarda más de 3 s en contestar, agent-browser abre otro en blanco y se pierde la sesión | Reabre una sola vez y pide bajar la carga, en vez de reintentar en bucle |
 | Con la ventana maximizada, `set viewport` responde `EOF … daemon may be busy` aunque el tamaño se aplica ([#1981](https://github.com/vercel-labs/agent-browser/issues/1981)) | Comprueba el tamaño con `eval` en vez de reintentar |
 
 ## 📥 Instalación

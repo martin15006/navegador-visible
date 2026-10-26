@@ -25,8 +25,8 @@ license: MIT
 4. No cierres la ventana a mitad de tarea. Si se cerró, reabrí **con** `--headed`.
 5. Scripts contra la API: solo de complemento, avisando *"esto no se ve en la ventana"*.
 6. Una línea de narración antes de cada paso; botones de confirmación antes de lo irreversible.
-7. **Nunca pases la salida de `agent-browser` por un tubo** (`| tail`, `| head`, `| grep`, `$(…)`,
-   `$x = …` en PowerShell). Que salga directa o a un archivo, y filtrá el archivo.
+7. **Usá agent-browser 0.39.3 o más nuevo** (`agent-browser --version`). En las versiones viejas,
+   pasar su salida por un tubo (`| grep`, `$(…)`) dejaba el comando colgado hasta cerrar la ventana.
 8. ¿Se colgó o dice `daemon may be busy or unresponsive`? No reintentes `open`, no cambies de
    `--session` y no cierres la ventana: seguí [Si se cuelga o da error](#si-se-cuelga-o-da-error).
 9. **No escribas contraseñas en la ventana, ni siquiera de usuarios de prueba.** Para entrar,
@@ -175,6 +175,10 @@ Cuidados:
   volvé a comprobar.
 - **Refs viejos.** Los `@eN` se renumeran cuando la página cambia. `snapshot -i` de nuevo antes de
   usar refs.
+- **Un click que da error porque el elemento está oculto o fuera de la vista** (por ejemplo, un
+  botón al final de un modal con scroll): llevalo a la vista con
+  `agent-browser scrollintoview <selector>` y volvé a hacer click. Hasta la 0.39.1 ese click decía ✓
+  sin llegar.
 - **`wait --text` busca el texto como se ve**, no como está en el HTML. Si el CSS lo pone en
   mayúsculas (`text-transform`), esperá `"ELIMINAR LA EMPRESA"`, no `"Eliminar la empresa"`.
 - **Campos de fecha (`<input type="date">`).** `fill` y `keyboard type` no escriben nada, y `click`
@@ -191,32 +195,15 @@ Cuidados:
 
 ## Si se cuelga o da error
 
-agent-browser tiene tres problemas que siguen en la 0.39.0 (`agent-browser --version`; si tenés
-una más vieja, actualizá):
+agent-browser tiene dos problemas que siguen en la 0.39.3:
 
 | Qué pasa | Por qué | Qué hacer |
 |---|---|---|
 | A mitad de la prueba la página queda en `about:blank` y se perdió la sesión. A veces la salida dice `[agent-browser] launched browser` | Antes de cada comando, agent-browser le da a Chrome **3 segundos** para contestar. Si la PC está cargada (poca RAM libre, un build o tests pesados corriendo) y tarda más, lo da por muerto y abre otro Chrome en blanco. Hasta la 0.38.1 también pasaba cuando Chrome se trababa con su propio log lleno, en sesiones largas; eso se arregló en la 0.38.2. **No es culpa del último comando**: le pasa a cualquiera, `wait` incluido | Volvé a abrir la página y a cargar la sesión, **una** vez, y avisale a Martín que la ventana se reinició. Si vuelve a pasar, bajá la carga: no corras builds, tests pesados ni instalaciones mientras usás la ventana, y apagá servidores y ventanas que no uses. |
-| Un comando no vuelve (Bash lo pasa a segundo plano), pero la ventana sí se abrió | Su salida iba por un tubo y ese comando arrancó la sesión: agent-browser deja el tubo abierto hasta que la ventana se cierra | La ventana anda. Comprobalo con `agent-browser get url` (sin tubo) y seguí desde ahí, sin tubos. No reabras. Dejá el comando colgado en segundo plano: termina solo cuando cerrás la ventana al final. |
 | `set viewport` responde `EOF while parsing … daemon may be busy or unresponsive` | La ventana está maximizada | Comprobá el tamaño con `agent-browser eval "innerWidth+'x'+innerHeight"`. Casi siempre se aplicó igual y seguís. Si no, pedile a Martín que la desmaximice, repetí `set viewport` **una** vez y comprobá de nuevo. Si sigue sin aplicarse, frená y contale. |
 
-Cualquier comando puede arrancar la sesión: el primero, o el que llega después de que la ventana
-se cerró o se cayó. Por eso la regla es **ningún tubo, nunca**, no "solo en el primero".
+Para una salida larga, filtrala directo: `agent-browser snapshot -i | grep -n "Crear vehículo"`.
 Para que un comando no espere de más, usá el timeout de la herramienta Bash.
-
-**Para filtrar una salida larga**, mandala a un archivo fuera del proyecto y filtrá el archivo:
-
-```bash
-agent-browser snapshot -i > "$TEMP/snap.txt" 2>&1
-grep -n "Crear vehículo" "$TEMP/snap.txt"
-
-# y para guardar un valor en una variable, en vez de $(…):
-agent-browser get text ".contador" > "$TEMP/valor.txt" 2>&1
-read -r valor < "$TEMP/valor.txt"
-```
-
-`timeout 60 agent-browser … | tail` **no** protege: `timeout` corta agent-browser, pero `tail`
-sigue esperando.
 
 **Si ni `agent-browser get url` responde** (recién ahí se cierra la ventana):
 
@@ -240,7 +227,7 @@ conversación. Una sola, si hace falta desambiguar algo o si el usuario la pide,
 
 ```
 1. agent-browser --headed open <url>     → aparece la ventana (avisale)
-2. agent-browser snapshot -i             → leés la página como texto (sin tubos); cookies si hay
+2. agent-browser snapshot -i             → leés la página como texto; cookies si hay
 3. narración de una línea
 4. agent-browser click / fill / press    → la acción pasa en la ventana
 5. comprobás el resultado (wait / eval)
@@ -268,9 +255,6 @@ agent-browser screenshot "$TEMP/paso.png"         # captura fuera del proyecto (
 agent-browser session list            # qué sesiones hay abiertas
 agent-browser close                   # cerrar al final (close --all si quedaron varias)
 ```
-
-Ninguno va con `| tail`, `| head`, `| grep` ni `$(…)`: salida directa, o a un archivo y después
-filtrás el archivo.
 
 ## Opcionales (a pedido)
 
